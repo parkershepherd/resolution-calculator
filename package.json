@@ -1,0 +1,20 @@
+{
+  "name": "resolution-calculator",
+  "version": "1.0.0",
+  "description": "Calculates optimal screen sizes for tvs",
+  "main": "resolutions.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Parker Shepherd",
+  "license": "ISC",
+  "dependencies": {
+    "asyncawait": "^1.0.1",
+    "colors": "^1.1.2",
+    "lodash": "^3.10.1",
+    "prompt": "^0.2.14"
+  },
+  "engines": {
+    "node": ">=5.1.0"
+  }
+}
