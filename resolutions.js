@@ -103,11 +103,11 @@ let printResults = configurations => {
 	let maxNameSize = 0;
 	let maxFovSize = 0;
 	let maxPpdSize = 0;
-	_(configurations).forEach(tv => {
+	_(configurations).each(tv => {
 		maxNameSize = Math.max(maxNameSize, tv.name.length);
 		maxFovSize = Math.max(maxFovSize, toFixed(tv.fov, 2).length);
 		maxPpdSize = Math.max(maxPpdSize, toFixed(tv.angRes, 2).length);
-	}).value();
+	});
 
 
 
@@ -121,12 +121,12 @@ let printResults = configurations => {
 	_(configurations)
 	.sortBy('score')
 	.reverse()
-	.forEach(tv => {
+	.each(tv => {
 		let name = padString(tv.name, maxNameSize).cyan;
 		let fov = `${padString(toFixed(tv.fov, 2), maxFovSize)}°`[tv.fovColor];
 		let ppd = `${padString(toFixed(tv.angRes, 2), maxPpdSize)} pix/°`[tv.angResColor];
 		console.log(`${name} ${dash} ${fov} ${dash} ${ppd}`);
-	}).value();
+	});
 };
 
 
