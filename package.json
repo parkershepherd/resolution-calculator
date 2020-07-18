@@ -11,7 +11,7 @@
   "dependencies": {
     "asyncawait": "^1.0.1",
     "colors": "^1.1.2",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "prompt": "^0.2.14"
   },
   "engines": {
