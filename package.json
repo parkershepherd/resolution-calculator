@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "publish": "git subtree push --prefix dist origin gh-pages",
     "preview": "vite preview"
   },
   "devDependencies": {
