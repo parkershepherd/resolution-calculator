@@ -1,0 +1,244 @@
+<script setup lang="ts">
+import Configuration from './Configuration.vue'
+</script>
+
+<script lang="ts">
+import { ref } from 'vue'
+import * as d3 from 'd3'
+
+const distance = ref(9)
+
+const fovCutoffs = {
+  min: 15,
+  idealMin: 35, idealMessage: 'THX recommendation (35+)',
+  overkillMin: 60, overkillMessage: 'IMAX minimum (60+)',
+  max: 65,
+}
+
+const ppdCutoffs = {
+  min: 60,
+  idealMin: 100, idealMessage: 'iPhone 6+ at 15"',
+  overkillMin: 160, overkillMessage: 'Human eye limit (120-170)',
+  max: 175,
+}
+
+const graphSize = 500
+const axisMargin = 15
+const margin = 15
+
+export default {
+  name: 'ResolutionCalculator',
+  data() {
+    return {
+      distance,
+      configurations: [{
+        screenSize: 60,
+        resolution: 2160,
+      }],
+      xScale: d3.scaleLinear()
+        .domain([ ppdCutoffs.min, ppdCutoffs.max ])
+        .range([axisMargin + margin, graphSize - margin])
+        .clamp(true),
+      yScale: d3.scaleLinear()
+        .domain([ fovCutoffs.min, fovCutoffs.max ])
+        .range([graphSize - axisMargin - margin, margin])
+        .clamp(true),
+    }
+  },
+  mounted: function() {
+    const svg = d3.select(this.$refs.svg as SVGElement)
+
+    const xAxis = d3.axisBottom(this.xScale).ticks(10)
+    const yAxis = d3.axisLeft(this.yScale).ticks(10)
+
+    // Create the axes
+    svg.append('g')
+      .attr('class', 'x axis')
+      .attr('transform', `translate(0, ${graphSize - axisMargin - margin})`)
+      .call(xAxis)
+    svg.append('g')
+
+    // Draw the y-axis
+      .attr('class', 'y axis')
+      .attr('transform', `translate(${axisMargin + margin}, 0)`)
+      .call(yAxis)
+    // Draw the graph
+   svg.append('g')
+      .attr('class', 'graph')
+
+    const badColor = 'lch(10% 10 160)'
+    const idealColor = 'lch(50% 150 160)'
+    const overkillColor = 'lch(80% 10 160)'
+    
+    // PPD bad area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.min))
+      .attr('y', this.yScale(fovCutoffs.max))
+      .attr('width', this.xScale(ppdCutoffs.idealMin) - this.xScale(ppdCutoffs.min))
+      .attr('height', this.yScale(fovCutoffs.min) - this.yScale(fovCutoffs.max))
+      .attr('fill', badColor)
+      .attr('opacity', 0.2)
+
+    // PPD ideal area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.idealMin))
+      .attr('y', this.yScale(fovCutoffs.max))
+      .attr('width', this.xScale(ppdCutoffs.overkillMin) - this.xScale(ppdCutoffs.idealMin))
+      .attr('height', this.yScale(fovCutoffs.min) - this.yScale(fovCutoffs.max))
+      .attr('fill', idealColor)
+      .attr('opacity', 0.2)
+
+    // PPD overkill area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.overkillMin))
+      .attr('y', this.yScale(fovCutoffs.max))
+      .attr('width', this.xScale(ppdCutoffs.max) - this.xScale(ppdCutoffs.overkillMin))
+      .attr('height', this.yScale(fovCutoffs.min) - this.yScale(fovCutoffs.max))
+      .attr('fill', overkillColor)
+      .attr('opacity', 0.2)
+      
+    
+    // FOV bad area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.min))
+      .attr('y', this.yScale(fovCutoffs.idealMin))
+      .attr('width', this.xScale(ppdCutoffs.max) - this.xScale(ppdCutoffs.min))
+      .attr('height', this.yScale(fovCutoffs.min) - this.yScale(fovCutoffs.idealMin))
+      .attr('fill', badColor)
+      .attr('opacity', 0.2)
+    // FOV ideal area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.min))
+      .attr('y', this.yScale(fovCutoffs.overkillMin))
+      .attr('width', this.xScale(ppdCutoffs.max) - this.xScale(ppdCutoffs.min))
+      .attr('height', this.yScale(fovCutoffs.idealMin) - this.yScale(fovCutoffs.overkillMin))
+      .attr('fill', idealColor)
+      .attr('opacity', 0.2)
+    // FOV overkill area
+    svg.append('rect')
+      .attr('x', this.xScale(ppdCutoffs.min))
+      .attr('y', this.yScale(fovCutoffs.max))
+      .attr('width', this.xScale(ppdCutoffs.max) - this.xScale(ppdCutoffs.min))
+      .attr('height', this.yScale(fovCutoffs.overkillMin) - this.yScale(fovCutoffs.max))
+      .attr('fill', overkillColor)
+      .attr('opacity', 0.2)
+
+    this.updateGraph()
+  },
+  methods: {
+    addConfiguration() {
+      const newConfig = {
+        screenSize: 60,
+        resolution: 2160,
+      };
+      this.configurations.push(newConfig);
+      this.updateGraph();
+    },
+    calculateStats({ screenSize, distance, resolution }: {
+      screenSize: number,
+      distance: number,
+      resolution: number,
+    }) {
+      let horizontalMultiplier = screenSize/Math.sqrt(16*16 + 9*9);
+      let verticalToHorizontal = 16/9;
+      let width = horizontalMultiplier * 16;
+      let horizontalResolution = verticalToHorizontal * resolution;
+      let fov = Math.atan( (width/2) / (distance*12) )*2 * 180/Math.PI;
+      let angularResolution = 2*(distance*12)*(horizontalResolution/width) * Math.tan(0.5 * Math.PI/180);
+      return {
+        fov,
+        angularResolution,
+      }
+    },
+
+    updateGraph() {
+      const graph = (this.$refs.svg as SVGElement).querySelector('.graph') as HTMLElement;
+      graph.innerHTML = ''; // Clear previous graph
+      for (let configuration of this.configurations) {
+        const stats = this.calculateStats({
+          screenSize: configuration.screenSize,
+          distance: this.distance,
+          resolution: configuration.resolution,
+        });
+        const circle = d3.select(graph)
+          .append('circle')
+          .attr('cx', this.xScale(stats.angularResolution))
+          .attr('cy', this.yScale(stats.fov))
+          .attr('r', 5)
+          .attr('fill', 'blue');
+
+        const label = `FOV: ${stats.fov.toFixed(2)}°, Angular Resolution: ${stats.angularResolution.toFixed(2)}°`
+        circle.append('title').text(label);
+        console.log(label)
+
+        d3.select(graph)
+          .append('text')
+          .attr('x', this.xScale(stats.angularResolution) + 10)
+          .attr('y', this.yScale(stats.fov))
+          .text(`${configuration.screenSize}" [${configuration.resolution}p]`)
+          .attr('fill', 'black')
+          .attr('font-size', '12px');
+      }
+    },
+  },
+  watch: {
+    configurations: 'updateGraph',
+    distance: 'updateGraph',
+  }
+}
+
+</script>
+
+<template>
+  <h1 class="text-4xl mb-4">What TV should I buy?</h1>
+  <div class="grid grid-cols-6 not-first:border-t-1 border-gray-400 py-4 my-4">
+    <div class="col-span-2 flex">
+      <div class="m-auto">
+        <h2 class="text-lg">Field of View</h2>
+        <ul class="text-sm">
+          <li>{{ fovCutoffs.idealMessage }}: {{ fovCutoffs.idealMin }}°</li>
+          <li>{{ fovCutoffs.overkillMessage }}: {{ fovCutoffs.overkillMin }}°</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-span-4">
+      <svg ref="svg" width="500" height="500"></svg>
+    </div>
+      <div class="col-span-3">&nbsp;</div>
+    <div class="col-span-3">
+      <div class="m-auto">
+        <h2 class="text-lg">Pixels per Degree</h2>
+        <ul class="text-sm">
+          <li>{{ ppdCutoffs.idealMessage }}: {{ ppdCutoffs.idealMin }} PPD</li>
+          <li>{{ ppdCutoffs.overkillMessage }}: {{ ppdCutoffs.overkillMin }} PPD</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="border-t-1 border-gray-400 py-4 my-4">
+    <h2 class="text-xl">Configuration</h2>
+    <div class="m-2">
+      <label for="distance">Viewing Distance (feet): {{ distance }}'</label>
+      <br/>
+      <input id="distance" type="range" min="5" max="20" step="0.25" v-model="distance" />
+    </div>
+    <div v-for="configuration in configurations">
+      <Configuration
+        class="m-2"
+        :screenSize="configuration.screenSize"
+        @update:screen-size="configuration.screenSize = $event; updateGraph()"
+        :resolution="configuration.resolution"
+        @update:resolution="configuration.resolution = $event; updateGraph()"
+        @delete="configurations = configurations.filter(c => c !== configuration)"
+      />
+    </div>
+    <button
+      class="bg-green-500 py-2 px-4 rounded-sm text-white m-2 cursor-pointer"
+      @click="addConfiguration">
+      Add
+    </button>
+  </div>
+</template>
+
+<style scoped>
+</style>
