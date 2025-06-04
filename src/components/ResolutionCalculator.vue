@@ -10,21 +10,21 @@ const distance = ref(9)
 
 const fovCutoffs = {
   min: 15,
-  idealMin: 35, idealMessage: 'THX recommendation (35+)',
-  overkillMin: 60, overkillMessage: 'IMAX minimum (60+)',
+  idealMin: 35, idealMessage: 'THX recommendation (35+)', idealLabel: 'THX',
+  overkillMin: 60, overkillMessage: 'IMAX minimum (60+)', overkillLabel: 'IMAX',
   max: 65,
 }
 
 const ppdCutoffs = {
   min: 60,
-  idealMin: 100, idealMessage: 'iPhone 6+ at 15"',
-  overkillMin: 160, overkillMessage: 'Human eye limit (120-170)',
+  idealMin: 100, idealMessage: 'iPhone 6+ at 15"', idealLabel: 'iPhone 6+',
+  overkillMin: 160, overkillMessage: 'Human eye limit (120-170)', overkillLabel: 'Human eye',
   max: 175,
 }
 
 const graphSize = 500
-const axisMargin = 15
-const margin = 15
+const axisMargin = 10
+const margin = 20
 
 export default {
   name: 'ResolutionCalculator',
@@ -123,6 +123,103 @@ export default {
       .attr('fill', overkillColor)
       .attr('opacity', 0.2)
 
+
+    // Draw angle icons to the left of the y axis to illustrate FOV at several locations
+    const numFovIcons = 6;
+    const fovMargin = 8
+    for (let i = 0; i < numFovIcons; i++) {
+      const fov = fovCutoffs.min + (fovCutoffs.max - fovCutoffs.min) * (i / (numFovIcons - 1));
+      // Draw triangle with open facing to the right, with using the calculated angle for each
+      const x = graphSize - margin + fovMargin // axisMargin + margin - fovIconNegativeMargin;
+      const y = this.yScale(fov)
+      // Draw 2 lines to form an angle pointing left, where the angle is the FOV
+      const angle = fov * Math.PI / 180;
+      const lineLength = 10;
+      const x1 = x + lineLength * Math.cos(angle / 2);
+      const y1 = y - lineLength * Math.sin(angle / 2);
+      const x2 = x + lineLength * Math.cos(-angle / 2);
+      const y2 = y - lineLength * Math.sin(-angle / 2);
+      svg.append('line')
+        .attr('x1', x)
+        .attr('y1', y)
+        .attr('x2', x1)
+        .attr('y2', y1)
+        .attr('stroke', 'black')
+        .attr('stroke-width', 1);
+      svg.append('line')
+        .attr('x1', x)
+        .attr('y1', y)
+        .attr('x2', x2)
+        .attr('y2', y2)
+        .attr('stroke', 'black')
+        .attr('stroke-width', 1);
+    }
+
+    let numPpdIcons = 6
+    const ppdMargin = 12
+    for (let i = 0; i < numPpdIcons; i++) {
+      const ppd = ppdCutoffs.min + (ppdCutoffs.max - ppdCutoffs.min) * (i / (numPpdIcons - 1));
+      // Draw circle with open facing to the right, with using the calculated angle for each
+      const x = this.xScale(ppd)
+      const y = margin - ppdMargin // graphSize - axisMargin - margin + ppdIconNegativeMargin;
+      // Draw hash marks illustrating PPD with fewer hash marks for lower PPD
+      const hashSize = 10
+      const numHashMarks = Math.max(1, Math.floor(ppd / 20));
+      const hashMarkSpacing = hashSize / (numHashMarks-1);
+      for (let j = 0; j < numHashMarks; j++) {
+        const hashX = x + j * hashMarkSpacing;
+        const hashY = y + j * hashMarkSpacing; // 5 pixels above the baseline
+        // Vertical line for each hash mark
+        svg.append('line')
+          .attr('x1', hashX - hashSize / 2)
+          .attr('y1', y + hashSize / 2)
+          .attr('x2', hashX - hashSize / 2)
+          .attr('y2', y - hashSize / 2)
+          .attr('stroke', 'black')
+          .attr('stroke-width', 1);
+        
+        // Horizontal line for each hash mark
+        svg.append('line')
+          .attr('x1', x - hashSize / 2)
+          .attr('y1', hashY - hashSize / 2)
+          .attr('x2', x + hashSize / 2)
+          .attr('y2', hashY - hashSize / 2)
+          .attr('stroke', 'black')
+          .attr('stroke-width', 1);
+      }
+    }
+
+    const cutoffTextColor = 'lch(50% 0 160)'
+    // Draw text labels for FOV and PPD cutoffs
+    svg.append('text')
+      .attr('x', axisMargin + margin + 5)
+      .attr('y', this.yScale(fovCutoffs.idealMin) + 5)
+      .text(`${fovCutoffs.idealLabel}: ${fovCutoffs.idealMin}°+`)
+      .attr('fill', cutoffTextColor)
+      .attr('font-size', '12px');
+    svg.append('text')
+      .attr('x', axisMargin + margin + 5)
+      .attr('y', this.yScale(fovCutoffs.overkillMin) + 5)
+      .text(`${fovCutoffs.overkillLabel}: ${fovCutoffs.overkillMin}°+`)
+      .attr('fill', cutoffTextColor)
+      .attr('font-size', '12px');
+
+    svg.append('text')
+      .attr('x', this.xScale(ppdCutoffs.idealMin) + 10)
+      .attr('y', graphSize - margin - ppdMargin)
+      .text(`${ppdCutoffs.idealLabel}: ${ppdCutoffs.idealMin} PPD+`)
+      // Rotate the text to be vertical
+      .attr('transform', `rotate(-90, ${this.xScale(ppdCutoffs.idealMin) + 5}, ${graphSize - margin - ppdMargin})`)
+      .attr('fill', cutoffTextColor)
+      .attr('font-size', '12px');
+    svg.append('text')
+      .attr('x', this.xScale(ppdCutoffs.overkillMin) + 10)
+      .attr('y', graphSize - margin - ppdMargin)
+      .text(`${ppdCutoffs.overkillLabel}: ${ppdCutoffs.overkillMin} PPD+`)
+      // Rotate the text to be vertical
+      .attr('transform', `rotate(-90, ${this.xScale(ppdCutoffs.overkillMin) + 5}, ${graphSize - margin - ppdMargin})`)
+      .attr('fill', cutoffTextColor)
+      .attr('font-size', '12px');
     this.updateGraph()
   },
   methods: {
@@ -190,30 +287,9 @@ export default {
 </script>
 
 <template>
-  <h1 class="text-4xl mb-4">What TV should I buy?</h1>
-  <div class="grid grid-cols-6 not-first:border-t-1 border-gray-400 py-4 my-4">
-    <div class="col-span-2 flex">
-      <div class="m-auto">
-        <h2 class="text-lg">Field of View</h2>
-        <ul class="text-sm">
-          <li>{{ fovCutoffs.idealMessage }}: {{ fovCutoffs.idealMin }}°</li>
-          <li>{{ fovCutoffs.overkillMessage }}: {{ fovCutoffs.overkillMin }}°</li>
-        </ul>
-      </div>
-    </div>
-    <div class="col-span-4">
-      <svg ref="svg" width="500" height="500"></svg>
-    </div>
-      <div class="col-span-3">&nbsp;</div>
-    <div class="col-span-3">
-      <div class="m-auto">
-        <h2 class="text-lg">Pixels per Degree</h2>
-        <ul class="text-sm">
-          <li>{{ ppdCutoffs.idealMessage }}: {{ ppdCutoffs.idealMin }} PPD</li>
-          <li>{{ ppdCutoffs.overkillMessage }}: {{ ppdCutoffs.overkillMin }} PPD</li>
-        </ul>
-      </div>
-    </div>
+  <h1 class="text-4xl mb-8">What TV should I buy?</h1>
+  <div class="flex justify-center">
+    <svg ref="svg" width="500" height="500"></svg>
   </div>
   <div class="border-t-1 border-gray-400 py-4 my-4">
     <h2 class="text-xl">Configuration</h2>
